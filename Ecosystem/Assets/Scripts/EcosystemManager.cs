@@ -6,7 +6,14 @@ using UnityEngine.UI;
 
 public class EcosystemManager : MonoBehaviour
 {
-    int generationCount = 0;
+    const float baseTimeScale = 1;
+    const int baseCreatureNumber = 100;
+    const float baseFoodRatio = 2;
+
+    const float maxTimeScale = 10;
+    const int maxCreatureNumber = 500;
+    const float maxFoodRatio = 5;
+
     public static EcosystemManager instance;
 
     public CreatureSpawner creatureSpawner { get; private set; }
@@ -19,6 +26,19 @@ public class EcosystemManager : MonoBehaviour
         creatureSpawner = GetComponent<CreatureSpawner>();
         cameraRotation = Camera.main.GetComponent<CameraRotation>();
 
+        timeScaleSlider.maxValue = maxTimeScale;
+        timeScaleSlider.value = timeScale;
+
+        automaticToggle.isOn = true;
+
+        creatureNumberSlider.maxValue = maxCreatureNumber;
+        creatureNumberSlider.value = baseCreatureNumber;
+
+        foodRatioSlider.maxValue = maxFoodRatio;
+        foodRatioSlider.value = baseFoodRatio;
+
+        ChangeSettingsActivationState(true);
+
         timerFSSeconds = foodSearchingTimerMinutes * 60f;
         timerRTESeconds = returnToEdgeTimerMinutes * 60f;
     }
@@ -29,20 +49,28 @@ public class EcosystemManager : MonoBehaviour
     }
 
     [Header("Simulation Infos")]
+    int generationCount = 0;
     public TextMeshProUGUI info_tmp;
     public TextMeshProUGUI timer_tmp;
 
-    [Header("Settings")]
+    [Header("Time Settings")]
     public Slider timeScaleSlider;
     public TextMeshProUGUI timeScale_tmp;
     public float timeScale { get; private set; } = 1;
 
+    [Header("Automatic Sim Settings")]
     public Toggle automaticToggle;
     bool automatic = false;
 
+    [Header("Creature Number Settings")]
+    public Slider creatureNumberSlider;
+    public TextMeshProUGUI creatureNum_tmp;
+
+    [Header("Food Ratio Settings")]
     public Slider foodRatioSlider;
     public TextMeshProUGUI foodRation_tmp;
 
+    [Header("Timer Settings")]
     public float foodSearchingTimerMinutes;
     float timerFSSeconds;
 
@@ -56,10 +84,12 @@ public class EcosystemManager : MonoBehaviour
 
     bool canSimulationRun = true;
 
+    bool canChangeSettings = true;
+
     public void ResetTimeScale()
     {
-        timeScaleSlider.value = 1;
-        timeScale = 1;
+        timeScaleSlider.value = baseTimeScale;
+        timeScale = baseTimeScale;
         timeScale_tmp.SetText("01,000");
     }
 
@@ -79,12 +109,75 @@ public class EcosystemManager : MonoBehaviour
 
     public void OnAutomaticToggleValueChanged()
     {
+        if (!canChangeSettings)
+        {
+            return;
+        }
+
         automatic = automaticToggle.isOn;
+    }
+
+    public void OnCreatureNumberSliderValueChanged()
+    {
+        if (!canChangeSettings)
+        {
+            return;
+        }
+
+        int a = (int)creatureNumberSlider.value;
+        creatureSpawner.creatureNumber = a;
+        creatureNum_tmp.SetText(a.ToString());
+
+        if (foodRatioSlider.value == 0)
+        {
+            creatureSpawner.canSpawnFood = false;
+            foodRation_tmp.SetText("0,0");
+        }
+        else
+        {
+            creatureSpawner.canSpawnFood = true;
+
+            float t = foodRatioSlider.value / 2f;
+            creatureSpawner.foodNumber = Mathf.RoundToInt(a * t);
+            creatureSpawner.foodCount = creatureSpawner.foodNumber;
+            foodRation_tmp.SetText(t.ToString("0.0") + " (" + creatureSpawner.foodNumber + ")");
+        }
+    }
+
+    public void ResetCreatureNumber()
+    {
+        if (!canChangeSettings)
+        {
+            return;
+        }
+
+        creatureNumberSlider.value = baseCreatureNumber;
+        creatureSpawner.creatureNumber = baseCreatureNumber;
+
+        if (foodRatioSlider.value == 0)
+        {
+            creatureSpawner.canSpawnFood = false;
+            foodRation_tmp.SetText("0,0");
+        }
+        else
+        {
+            creatureSpawner.canSpawnFood = true;
+
+            float t = foodRatioSlider.value / 2f;
+            creatureSpawner.foodNumber = Mathf.RoundToInt(baseCreatureNumber * t);
+            creatureSpawner.foodCount = creatureSpawner.foodNumber;
+            foodRation_tmp.SetText(t.ToString("0.0") + " (" + creatureSpawner.foodNumber + ")");
+        }
     }
 
     public void OnFoodRatioSliderValueChanged()
     {
-        if(foodRatioSlider.value == 0)
+        if (!canChangeSettings)
+        {
+            return;
+        }
+
+        if (foodRatioSlider.value == 0)
         {
             creatureSpawner.canSpawnFood = false;
             foodRation_tmp.SetText("0,0");
@@ -96,17 +189,31 @@ public class EcosystemManager : MonoBehaviour
             float t = foodRatioSlider.value / 2f;
             creatureSpawner.foodNumber = Mathf.RoundToInt(creatureSpawner.creatureNumber * t);
             creatureSpawner.foodCount = creatureSpawner.foodNumber;
-            foodRation_tmp.SetText(t.ToString("0.0"));
+            foodRation_tmp.SetText(t.ToString("0.0") + " (" + creatureSpawner.foodNumber + ")");
         }
     }
 
     public void ResetFoodRatio()
     {
-        foodRatioSlider.value = 2;
+        if (!canChangeSettings)
+        {
+            return;
+        }
+
+        foodRatioSlider.value = baseFoodRatio;
         float t = foodRatioSlider.value / 2f;
         creatureSpawner.foodNumber = Mathf.RoundToInt(creatureSpawner.creatureNumber * t);
         creatureSpawner.foodCount = creatureSpawner.foodNumber;
-        foodRation_tmp.SetText(t.ToString("0.0"));
+        foodRation_tmp.SetText(t.ToString("0.0") + " (" + creatureSpawner.foodNumber + ")");
+    }
+
+    void ChangeSettingsActivationState(bool v)
+    {
+        creatureNumberSlider.interactable = v;
+        foodRatioSlider.interactable = v;
+        automaticToggle.interactable = v;
+
+        canChangeSettings = v;
     }
 
     private void Update()
@@ -136,7 +243,7 @@ public class EcosystemManager : MonoBehaviour
 
             if(firstTime)
             {
-                automaticToggle.interactable = false;
+                ChangeSettingsActivationState(false);
 
                 creatureSpawner.SpawnCreatures();
                 creatureSpawner.SpawnFood();

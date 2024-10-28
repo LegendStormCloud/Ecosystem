@@ -5,11 +5,11 @@ using UnityEngine;
 [System.Serializable]
 public class CreatureTrait
 {
-    public float speed = 1f;
-    public float size = 1f;
-    public float sense = 1f;
-    public float vision = .15f;
-    public float maxEnergy = 50f;
+    [Min(0)] public float speed = 1f;
+    [Min(0.1f)] public float size = 1f;
+    [Min(0.1f)] public float sense = 1f;
+    [Min(0.05f)] public float vision = .15f;
+    [Min(0)] public float maxEnergy = 50f;
 }
 
 public class Creature : MonoBehaviour
@@ -42,15 +42,18 @@ public class Creature : MonoBehaviour
             return;
         }
 
-        Gizmos.color = Color.black;
+        Gizmos.color = Color.red;
 
         float halvedAngle = Mathf.PI * trait.vision * Mathf.Rad2Deg;
 
         Vector3 central = transform.forward * trait.sense;
         Vector3 rotA = Quaternion.AngleAxis(halvedAngle, Vector3.up) * central;
+
         Vector3 rotB = Quaternion.AngleAxis(-halvedAngle, Vector3.up) * central;
 
         Gizmos.DrawLine(transform.position, transform.position + rotA);
+
+        Gizmos.color = Color.black;
         Gizmos.DrawLine(transform.position, transform.position + rotB);
 
         Vector3 oldPoint = transform.position + rotA;
@@ -165,8 +168,6 @@ public class Creature : MonoBehaviour
             return;
         }
 
-        SearchNearestFoodInFOV();
-
         if (targetedFood == null)
         {
             targetedFood = null; //if missing object
@@ -202,6 +203,8 @@ public class Creature : MonoBehaviour
                 return;
             }
         }
+
+        SearchNearestFoodInFOV();
     }
 
     private void SearchRandomPointInFOV()
@@ -231,6 +234,34 @@ public class Creature : MonoBehaviour
         destinationReached = false;
     }
 
+    float CalculateAngleFromVector(Vector3 vec)
+    {
+        float angle = 0;
+        float z = vec.z;
+        float x = vec.x;
+
+        if (x == 0 && z < 0)
+        {
+            angle = 180;
+        }
+        else
+        {
+            angle = Mathf.Atan(z / x) * Mathf.Rad2Deg;
+
+            if (x < 0)
+            {
+                angle += 180;
+            }
+
+            if (z < 0 && x > 0)
+            {
+                angle += 360;
+            }
+        }
+
+        return angle;
+    }
+
     private void SearchNearestFoodInFOV()
     {
         if(targetedFood != null)
@@ -250,13 +281,21 @@ public class Creature : MonoBehaviour
 
             if (dirFromObj.sqrMagnitude <= trait.sense * trait.sense)
             {
-                float angleObj = Mathf.Atan2(dirFromObj.z, dirFromObj.x) * Mathf.Rad2Deg;
-                angleObj = (angleObj + 360) % 360;
+                Vector3 central = transform.forward * trait.sense;
+                Vector3 rotA = Quaternion.AngleAxis(halvedAngle, Vector3.up) * central;
+                Vector3 rotB = Quaternion.AngleAxis(-halvedAngle, Vector3.up) * central;
 
-                float lowerThreshold = (-90 - halvedAngle + transform.rotation.eulerAngles.y + 360) % 360;
-                float higherThreshold = (-90 + halvedAngle + transform.rotation.eulerAngles.y + 360) % 360;
+                float angleObj = CalculateAngleFromVector(dirFromObj);
+                float angA = CalculateAngleFromVector(rotA) ;
+                float angB = CalculateAngleFromVector(rotB);
 
-                if (angleObj >= lowerThreshold && angleObj <= higherThreshold)
+                if (angB < angA)
+                {
+                    angB += 360;
+                    angleObj += 360;
+                }
+
+                if (angA <= angleObj && angleObj <= angB)
                 {
                     if (dirFromObj.sqrMagnitude > distance)
                     {

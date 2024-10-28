@@ -7,8 +7,8 @@ public class CreatureSpawner : MonoBehaviour
     [Header("Basic Stats")]
     public bool canSpawnFood = true;
     public float radius;
-    [Min(1)] public int creatureNumber;
-    [Min(1)] public int foodNumber;
+    [HideInInspector] public int creatureNumber;
+    [HideInInspector] public int foodNumber;
 
     [Header("Prefabs")]
     public GameObject creature;
@@ -20,7 +20,7 @@ public class CreatureSpawner : MonoBehaviour
     public List<GameObject> creaturesGO;
     public List<GameObject> foodGO;
 
-    public int foodCount;
+    [HideInInspector] public int foodCount;
 
     public Transform creatureParent { get; private set; }
     Transform foodParent;
